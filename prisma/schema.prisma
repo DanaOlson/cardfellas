@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id         String         @id @default(cuid())
+  email      String         @unique
+  firstName  String
+  lastName   String
+  password   String
+  role       Role           @default(CUSTOMER)
+  orders              Order[]
+  wishlist            WishlistItem[]
+  sellQuotes          SellQuote[]
+  passwordResetTokens PasswordResetToken[]
+  createdAt  DateTime       @default(now())
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+model Product {
+  id                String          @id @default(cuid())
+  name              String
+  game              Game
+  setName           String
+  setCode           String?
+  condition         Condition
+  price             Decimal         @db.Decimal(10, 2)
+  buyCashPrice      Decimal?        @db.Decimal(10, 2)
+  buyCreditPrice    Decimal?        @db.Decimal(10, 2)
+  quantity          Int             @default(0)
+  isFoil            Boolean         @default(false)
+  rarity            String?
+  colorIdentity     String?
+  imageUrl          String?
+  isFeatured        Boolean         @default(false)
+  isBuylistFeatured Boolean         @default(false)
+  orderItems        OrderItem[]
+  wishlistItems     WishlistItem[]
+  sellQuoteItems    SellQuoteItem[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([game])
+  @@index([setName])
+  @@index([isFeatured])
+  @@index([isBuylistFeatured])
+  @@index([createdAt])
+}
+
+enum Game {
+  MAGIC
+  POKEMON
+  YUGIOH
+  SPORTS
+  OTHER
+}
+
+enum Condition {
+  NM
+  LP
+  MP
+  HP
+  DMG
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  user        User?       @relation(fields: [userId], references: [id])
+  userId      String?
+  guestName   String?
+  guestEmail  String?
+  guestPhone  String?
+  pickupNote  String?
+  items       OrderItem[]
+  total       Decimal     @db.Decimal(10, 2)
+  status      OrderStatus @default(PENDING)
+  stripeId    String?
+  createdAt   DateTime    @default(now())
+
+  @@index([userId])
+  @@index([guestEmail])
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FULFILLED
+  CANCELLED
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  order     Order   @relation(fields: [orderId], references: [id])
+  orderId   String
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+  quantity  Int
+  price     Decimal @db.Decimal(10, 2)
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+model WishlistItem {
+  id        String  @id @default(cuid())
+  user      User    @relation(fields: [userId], references: [id])
+  userId    String
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+
+  @@unique([userId, productId])
+}
+
+model Event {
+  id              String    @id @default(cuid())
+  title           String
+  game            Game?
+  date            DateTime
+  endTime         DateTime?
+  entryFee        Decimal   @default(0) @db.Decimal(10, 2)
+  format          String?
+  description     String?
+  registrationUrl String?
+  ageRestriction  String?
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+
+  @@index([date])
+  @@index([isActive])
+}
+
+model SellQuote {
+  id          String          @id @default(cuid())
+  user        User?           @relation(fields: [userId], references: [id])
+  userId      String?
+  guestEmail  String?
+  items       SellQuoteItem[]
+  status      QuoteStatus     @default(PENDING)
+  totalCash   Decimal?        @db.Decimal(10, 2)
+  totalCredit Decimal?        @db.Decimal(10, 2)
+  notes       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+enum QuoteStatus {
+  PENDING
+  REVIEWED
+  ACCEPTED
+  DECLINED
+}
+
+model SellQuoteItem {
+  id        String    @id @default(cuid())
+  quote     SellQuote @relation(fields: [quoteId], references: [id])
+  quoteId   String
+  product   Product   @relation(fields: [productId], references: [id])
+  productId String
+  quantity  Int       @default(1)
+  condition Condition
+}
